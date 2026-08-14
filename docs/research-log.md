@@ -24,3 +24,20 @@ negative results so searches are reproducible and do not needlessly repeat.
 - Confirmed the 1.1.0 scene filename in a January 2010 IPA-pack index. Its ten
   RapidShare parts are no longer available and produced no usable Wayback
   captures in this pass.
+
+## 2026-08-14 — Static and Linux execution baseline
+
+- Installed Ghidra 12.1.2 with OpenJDK 21 and completed headless analysis of
+  separate ARMv6 and ARMv7 programs in the ignored `hrr-2.0.0` project.
+- Built touchHLE commit `331903de883405a8597036e4ed5ce8333f1604c9`
+  locally on x86-64 Linux.
+- The stock emulator reached game initialization but stopped at missing
+  Reachability scheduling and region-qualified `NSLocale` behavior.
+- Added three narrow compatibility shims and preserved them as a standalone
+  patch. The original ARMv7 executable then reached the English title screen,
+  initialized audio, and remained stable at approximately 30 FPS for the
+  30-second test window.
+- Added a normalized SQLite catalogue schema and builder. The first generated
+  catalogue indexes 2 slices, 48 sections, 28 library references, 12,210 symbol
+  records, 10 Objective-C classes, 216 methods, 88 fields, 152 object files, and
+  2,342 non-executable bundle files.

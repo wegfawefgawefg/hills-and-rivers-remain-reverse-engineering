@@ -3,6 +3,8 @@
 /workspace/extracted/*
 /workspace/ghidra/*
 /workspace/reports/*
+/workspace/toolchains/*
+/workspace/catalog/*
 !/workspace/**/.gitkeep
 
 # Ghidra and reverse-engineering scratch files.
@@ -13,6 +15,7 @@
 *.nam
 *.til
 *.dmp
+touchHLE_log.txt
 
 # Local/editor noise.
 .DS_Store

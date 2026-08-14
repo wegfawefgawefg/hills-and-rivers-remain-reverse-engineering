@@ -1,0 +1,160 @@
+diff --git a/src/frameworks/foundation/ns_locale.rs b/src/frameworks/foundation/ns_locale.rs
+index ac23f6d..11e67dd 100644
+--- a/src/frameworks/foundation/ns_locale.rs
++++ b/src/frameworks/foundation/ns_locale.rs
+@@ -160,14 +160,27 @@ pub const CLASSES: ClassExports = objc_classes! {
+ - (id)initWithLocaleIdentifier:(id)string { // NSString *
+     let str = ns_string::to_rust_string(env, string);
+     log_dbg!("[(NSLocale *){:?} initWithLocaleIdentifier:'{}']", this, str);
+-    retain(env, string);
+-    // Loosely assume 2-char lang code here
+-    // TODO: locale identifier parsing
+-    assert_eq!(2, str.len());
+-    assert!(str.to_lowercase().eq(&str));
+-    assert!(!str.contains('_') && !str.contains('-'));
+-    assert!(env.objc.borrow::<NSLocaleHostObject>(this).language_code == nil);
+-    env.objc.borrow_mut::<NSLocaleHostObject>(this).language_code = string;
++
++    // Locale identifiers used by iPhone OS 3 applications commonly include a
++    // region suffix, for example "en_US". Accept both underscore and hyphen
++    // separators and normalize the two components.
++    let mut components = str.split(|character| character == '_' || character == '-');
++    let language = components.next().unwrap_or_default();
++    let country = components.next();
++    assert!(!language.is_empty());
++    assert!(components.next().is_none());
++
++    let language_code = ns_string::from_rust_string(env, language.to_lowercase());
++    let country_code = country
++        .filter(|value| !value.is_empty())
++        .map(|value| ns_string::from_rust_string(env, value.to_uppercase()))
++        .unwrap_or(nil);
++
++    let host_object = env.objc.borrow_mut::<NSLocaleHostObject>(this);
++    assert!(host_object.language_code == nil);
++    assert!(host_object.country_code == nil);
++    host_object.language_code = language_code;
++    host_object.country_code = country_code;
+     this
+ }
+ 
+@@ -188,6 +201,18 @@ pub const CLASSES: ClassExports = objc_classes! {
+     msg![env; this objectForKey:locale_id_key]
+ }
+ 
++- (id)displayNameForKey:(id)key value:(id)value {
++    // A localized display name would be preferable, but returning the supplied
++    // locale component is a useful and deterministic fallback.
++    log_dbg!(
++        "[(NSLocale *){:?} displayNameForKey:'{}' value:'{}']",
++        this,
++        ns_string::to_rust_string(env, key),
++        ns_string::to_rust_string(env, value)
++    );
++    value
++}
++
+ - (id)objectForKey:(id)key {
+     let key_str: &str = &ns_string::to_rust_string(env, key);
+     match key_str {
+@@ -201,13 +226,17 @@ pub const CLASSES: ClassExports = objc_classes! {
+         // TODO: Define NSLocaleIdentifier _as_ kCFLocaleIdentifier
+         NSLocaleIdentifier | kCFLocaleIdentifier => {
+             let &NSLocaleHostObject { country_code, language_code } = env.objc.borrow(this);
+-            assert!(country_code != nil); // TODO
+-            assert!(language_code != nil); // TODO
+-            let locale_id_str = format!(
+-                "{}_{}",
+-                ns_string::to_rust_string(env, language_code),
+-                ns_string::to_rust_string(env, country_code)
+-            );
++            assert!(language_code != nil);
++            let language = ns_string::to_rust_string(env, language_code).into_owned();
++            let locale_id_str = if country_code == nil {
++                language
++            } else {
++                format!(
++                    "{}_{}",
++                    language,
++                    ns_string::to_rust_string(env, country_code)
++                )
++            };
+             let res = ns_string::from_rust_string(env, locale_id_str);
+             autorelease(env, res)
+         },
+diff --git a/src/frameworks/system_configuration/sc_network_reachability.rs b/src/frameworks/system_configuration/sc_network_reachability.rs
+index 463880d..ec75d0a 100644
+--- a/src/frameworks/system_configuration/sc_network_reachability.rs
++++ b/src/frameworks/system_configuration/sc_network_reachability.rs
+@@ -8,6 +8,7 @@
+ use crate::abi::GuestFunction;
+ use crate::dyld::{export_c_func, FunctionExports};
+ use crate::frameworks::core_foundation::cf_allocator::{kCFAllocatorDefault, CFAllocatorRef};
++use crate::frameworks::core_foundation::cf_run_loop::{CFRunLoopMode, CFRunLoopRef};
+ use crate::frameworks::core_foundation::CFTypeRef;
+ use crate::libc::sys::socket::sockaddr;
+ use crate::mem::{ConstPtr, MutPtr, MutVoidPtr, Ptr};
+@@ -157,12 +158,54 @@ fn SCNetworkReachabilitySetCallback(
+             .get_known_class("_touchHLE_SCNetworkReachability", &mut env.mem)
+     );
+     log!(
+-        "TODO: SCNetworkReachabilitySetCallback({:?}, {:?}, {:?}) -> FALSE",
++        "TODO: SCNetworkReachabilitySetCallback({:?}, {:?}, {:?}) -> TRUE (callback not scheduled)",
+         target,
+         callout,
+         context
+     );
+-    false
++    true
++}
++
++fn SCNetworkReachabilityScheduleWithRunLoop(
++    env: &mut Environment,
++    target: SCNetworkReachabilityRef,
++    run_loop: CFRunLoopRef,
++    run_loop_mode: CFRunLoopMode,
++) -> bool {
++    let target_class: Class = msg![env; target class];
++    assert_eq!(
++        target_class,
++        env.objc
++            .get_known_class("_touchHLE_SCNetworkReachability", &mut env.mem)
++    );
++    log!(
++        "TODO: SCNetworkReachabilityScheduleWithRunLoop({:?}, {:?}, {:?}) -> TRUE (no-op)",
++        target,
++        run_loop,
++        run_loop_mode
++    );
++    true
++}
++
++fn SCNetworkReachabilityUnscheduleFromRunLoop(
++    env: &mut Environment,
++    target: SCNetworkReachabilityRef,
++    run_loop: CFRunLoopRef,
++    run_loop_mode: CFRunLoopMode,
++) -> bool {
++    let target_class: Class = msg![env; target class];
++    assert_eq!(
++        target_class,
++        env.objc
++            .get_known_class("_touchHLE_SCNetworkReachability", &mut env.mem)
++    );
++    log!(
++        "TODO: SCNetworkReachabilityUnscheduleFromRunLoop({:?}, {:?}, {:?}) -> TRUE (no-op)",
++        target,
++        run_loop,
++        run_loop_mode
++    );
++    true
+ }
+ 
+ pub const FUNCTIONS: FunctionExports = &[
+@@ -170,4 +213,6 @@ pub const FUNCTIONS: FunctionExports = &[
+     export_c_func!(SCNetworkReachabilityCreateWithAddress(_, _)),
+     export_c_func!(SCNetworkReachabilityGetFlags(_, _)),
+     export_c_func!(SCNetworkReachabilitySetCallback(_, _, _)),
++    export_c_func!(SCNetworkReachabilityScheduleWithRunLoop(_, _, _)),
++    export_c_func!(SCNetworkReachabilityUnscheduleFromRunLoop(_, _, _)),
+ ];

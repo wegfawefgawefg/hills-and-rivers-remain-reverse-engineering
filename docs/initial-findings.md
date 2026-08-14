@@ -60,8 +60,13 @@ separately.
 
 ## Execution outlook
 
-The plaintext ARMv6/ARMv7 executable and iOS 3.0 deployment target make a real
-jailbroken iOS 3–6 device the highest-confidence execution route. touchHLE is
-the best emulator candidate, but framework/API coverage must be tested; this
-title uses UIKit, OpenGL ES, OpenAL, StoreKit, and SystemConfiguration. Apple's
-iOS Simulator cannot directly run device ARM Mach-O code.
+The original ARMv7 executable now boots to the English title screen in touchHLE
+on x86-64 Linux. It initializes UIKit, OpenGL ES 1.1, audio, localization,
+Reachability, touch input, and accelerometer input, then renders steadily at
+about 30 FPS. Three small host compatibility shims are required; see
+[`emulation.md`](emulation.md).
+
+This makes touchHLE the primary comparison environment. A real jailbroken iOS
+3–6 device remains valuable for validating behavior touchHLE approximates,
+especially locale, reachability, StoreKit, accelerometer, and audio timing.
+Apple's iOS Simulator cannot directly run this device ARM Mach-O code.

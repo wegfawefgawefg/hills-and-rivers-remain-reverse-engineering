@@ -10,25 +10,27 @@ by Git, including in this private repository.
 
 ## Current phase
 
-1. Locate and preserve every surviving IPA variant.
-2. Hash and inventory each artifact without modifying the original.
-3. Extract its app bundle and inspect its Mach-O executable.
-4. Record architecture slices, deployment target, imports, and FairPlay
-   `cryptid` status.
-5. Prefer an already-decrypted executable before investing in old-device
-   execution and memory dumping.
-6. Import plaintext executables into Ghidra and map the engine from startup
-   through rendering, input, data loading, entities, AI, saves, and audio.
+The surviving 2.0.0 build is decrypted, unstripped, imported into Ghidra, and
+booting to its title screen in touchHLE on Linux. The active work is now a full
+catalogue of binary structure, content formats, and observed behavior while the
+search for older, Lite, and encrypted builds continues.
+
+See [`docs/catalogue-plan.md`](docs/catalogue-plan.md) for the completeness
+criteria and [`docs/emulation.md`](docs/emulation.md) for the Linux baseline.
 
 ## Workspace
 
 ```text
 docs/                 Version ledger, findings, and research notes
 tools/                Reproducible inspection helpers
+catalog/              Catalogue schema and evidence conventions
+emulation/patches/    Reproducible compatibility patches
 workspace/originals/  Untouched acquired IPAs (ignored)
 workspace/extracted/  One extracted tree per artifact (ignored)
 workspace/reports/    Generated inventories and command output (ignored)
 workspace/ghidra/     Local Ghidra projects (ignored)
+workspace/catalog/    Generated SQLite catalogues (ignored)
+workspace/toolchains/ Local Ghidra/touchHLE checkouts (ignored)
 ```
 
 Put each downloaded file in `workspace/originals/` and make it read-only. Run:
@@ -41,6 +43,15 @@ python3 tools/inventory_ipa.py workspace/originals/example.ipa \
 
 Then add its provenance and results to [`docs/variants.md`](docs/variants.md).
 Never rename, recompress, patch, or overwrite the preserved source file.
+
+Generate the mechanical catalogue for an extracted app with:
+
+```bash
+python3 tools/build_catalog.py \
+  'workspace/extracted/example/Payload/Game.app' \
+  workspace/catalog/example.sqlite \
+  --build-id example
+```
 
 ## Scope and handling
 
