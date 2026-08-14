@@ -1,0 +1,22 @@
+# Acquired binaries and extracted copyrighted content stay local.
+/workspace/originals/*
+/workspace/extracted/*
+/workspace/ghidra/*
+/workspace/reports/*
+!/workspace/**/.gitkeep
+
+# Ghidra and reverse-engineering scratch files.
+*.gpr
+*.rep/
+*.idb
+*.i64
+*.nam
+*.til
+*.dmp
+
+# Local/editor noise.
+.DS_Store
+.idea/
+.vscode/
+__pycache__/
+*.pyc
