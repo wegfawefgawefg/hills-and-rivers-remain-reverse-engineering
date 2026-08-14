@@ -45,3 +45,19 @@ negative results so searches are reproducible and do not needlessly repeat.
   into the first playable tutorial map. Confirmed live map rendering, dialogue,
   base selection, and the Move Troops, Relocate HQ, and Items command UI without
   encountering another emulator compatibility failure.
+
+## 2026-08-14 — Functional content catalogue baseline
+
+- Adopted stable content identities, exact source ranges/hashes, typed
+  relationships, confidence, and independent extracted/linked/understood/
+  presented coverage flags.
+- Decoded four big-endian indexed map containers into 78 exact records and
+  linked them to `MapData::readPackData` in both ARM slices. Nineteen records
+  are byte-identical across packs.
+- Decoded 282 localization tables into 6,894 entries across five languages,
+  preserving both binary-plist and legacy UTF-8 OpenStep encodings.
+- Indexed 139 version-1 YAS animation files, recorded their raw header words,
+  and resolved 129 direct texture references to 93 unique assets.
+- Identified the named `Script` scenario interpreter as the next primary RE
+  target. Its surviving methods cover branching, conditions, event triggers,
+  base/map mutation, dialogue, effects, audio, flags, and endings.

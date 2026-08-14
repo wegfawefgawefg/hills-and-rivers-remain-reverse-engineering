@@ -34,6 +34,18 @@ The long-term catalogue should cover:
 - runtime screens, transitions, timings and input/output traces;
 - uncertainty, conflicting evidence, and differences between releases.
 
-`tools/build_catalog.py` currently seeds the mechanical portion. Human RE notes
-and runtime observations should be added incrementally rather than hidden in a
-single narrative document.
+`tools/build_catalog.py` seeds both the mechanical index and decoded functional
+content. Content entries use stable IDs and four independent coverage flags:
+
+- `extracted`: its source bytes have an exact boundary and hash;
+- `linked`: a container, consumer, or related record is known;
+- `understood`: the fields or behavior have a defensible interpretation;
+- `presented`: the content has a usable textual, visual, or audio presentation.
+
+Confidence is separate from coverage. A record boundary can be confirmed while
+the record's meaning remains unknown. `content_relationships` records containment,
+localization, byte identity, and asset references; `consumer_callsites` connects
+content to surviving functions and addresses in each architecture.
+
+Human RE notes and runtime observations should be added incrementally rather
+than hidden in a single narrative document.

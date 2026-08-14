@@ -17,6 +17,8 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
+from content_catalog import insert_functional_content
+
 
 OBJECT_FILE_PATTERN = re.compile(r"(?:^|/)([^/\x00]+\.o)$")
 
@@ -78,6 +80,12 @@ def cryptid(executable: Path) -> int:
 def reset_build(connection: sqlite3.Connection, build_id: str) -> None:
     tables = (
         "observations",
+        "yas_headers",
+        "localized_strings",
+        "map_pack_records",
+        "consumer_callsites",
+        "content_relationships",
+        "content_entries",
         "resources",
         "object_files",
         "objc_fields",
@@ -283,6 +291,12 @@ def print_summary(connection: sqlite3.Connection, build_id: str, database: Path)
         "objc_fields",
         "object_files",
         "resources",
+        "content_entries",
+        "content_relationships",
+        "consumer_callsites",
+        "map_pack_records",
+        "localized_strings",
+        "yas_headers",
     ):
         count = connection.execute(
             f"SELECT count(*) FROM {table} WHERE build_id = ?", (build_id,)
@@ -324,6 +338,7 @@ def main() -> None:
                 insert_slice(connection, args.build_id, architecture, thin)
         insert_object_files(connection, args.build_id, executable)
         insert_resources(connection, args.build_id, app, executable)
+        insert_functional_content(connection, args.build_id, app)
 
     print_summary(connection, args.build_id, args.database)
     connection.close()

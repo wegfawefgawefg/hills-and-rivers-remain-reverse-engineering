@@ -44,7 +44,8 @@ python3 tools/inventory_ipa.py workspace/originals/example.ipa \
 Then add its provenance and results to [`docs/variants.md`](docs/variants.md).
 Never rename, recompress, patch, or overwrite the preserved source file.
 
-Generate the mechanical catalogue for an extracted app with:
+Generate the mechanical and first-pass functional catalogue for an extracted
+app with:
 
 ```bash
 python3 tools/build_catalog.py \
@@ -52,6 +53,10 @@ python3 tools/build_catalog.py \
   workspace/catalog/example.sqlite \
   --build-id example
 ```
+
+The builder strictly decodes indexed map packs, localization tables, and YAS
+animation headers. See [`docs/functional-catalogue.md`](docs/functional-catalogue.md)
+and [`docs/formats/`](docs/formats/) for current coverage and format evidence.
 
 ## Scope and handling
 
