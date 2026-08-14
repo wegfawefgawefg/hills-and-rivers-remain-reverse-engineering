@@ -41,14 +41,44 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
+def normalized_member_name(member: zipfile.ZipInfo) -> str:
+    """Repair UTF-8 names stored without ZIP's UTF-8 flag by older IPA tools."""
+    name = member.filename
+    if member.flag_bits & 0x800:
+        return name
+    try:
+        return name.encode("cp437").decode("utf-8")
+    except (UnicodeEncodeError, UnicodeDecodeError):
+        return name
+
+
 def safe_extract(archive: zipfile.ZipFile, destination: Path) -> None:
     destination = destination.resolve()
     destination.mkdir(parents=True, exist_ok=True)
     for member in archive.infolist():
-        output = (destination / member.filename).resolve()
+        member_name = normalized_member_name(member)
+        output = (destination / member_name).resolve()
         if destination != output and destination not in output.parents:
-            raise ValueError(f"unsafe archive member: {member.filename}")
-        archive.extract(member, destination)
+            raise ValueError(f"unsafe archive member: {member_name}")
+
+        mode = member.external_attr >> 16
+        if stat.S_ISLNK(mode):
+            link_target = archive.read(member).decode("utf-8")
+            resolved_target = (output.parent / link_target).resolve()
+            if destination != resolved_target and destination not in resolved_target.parents:
+                raise ValueError(f"unsafe symbolic link archive member: {member_name}")
+            output.parent.mkdir(parents=True, exist_ok=True)
+            output.symlink_to(link_target)
+            continue
+        if member.is_dir():
+            output.mkdir(parents=True, exist_ok=True)
+            continue
+
+        output.parent.mkdir(parents=True, exist_ok=True)
+        with archive.open(member) as source, output.open("wb") as target:
+            shutil.copyfileobj(source, target)
+        if mode:
+            output.chmod(stat.S_IMODE(mode))
 
 
 def json_value(value: Any) -> Any:
@@ -101,23 +131,24 @@ def inspect_ipa(ipa_path: Path, extract_path: Path | None) -> dict[str, Any]:
 
     with zipfile.ZipFile(ipa_path) as archive:
         members = archive.infolist()
+        member_names = {normalized_member_name(item): item for item in members}
         result["archive"] = {
             "member_count": len(members),
             "uncompressed_size_bytes": sum(item.file_size for item in members),
-            "members": [item.filename for item in members],
+            "members": list(member_names),
         }
         plist_names = [
-            item.filename
+            normalized_member_name(item)
             for item in members
-            if item.filename.startswith("Payload/")
-            and item.filename.count("/") == 2
-            and item.filename.endswith(".app/Info.plist")
+            if normalized_member_name(item).startswith("Payload/")
+            and normalized_member_name(item).count("/") == 2
+            and normalized_member_name(item).endswith(".app/Info.plist")
         ]
         if len(plist_names) != 1:
             result["error"] = f"expected one top-level app Info.plist, found {len(plist_names)}"
         else:
             plist_name = plist_names[0]
-            plist = plistlib.loads(archive.read(plist_name))
+            plist = plistlib.loads(archive.read(member_names[plist_name]))
             executable_name = plist.get("CFBundleExecutable")
             app_prefix = plist_name.removesuffix("Info.plist")
             executable_member = app_prefix + executable_name if executable_name else None
@@ -142,6 +173,10 @@ def inspect_ipa(ipa_path: Path, extract_path: Path | None) -> dict[str, Any]:
                 "size_bytes": executable.stat().st_size,
                 "sha256": sha256_file(executable),
                 "file": command_output(["file", str(executable)]),
+                "llvm_objdump_private_headers": command_output(
+                    ["llvm-objdump", "--macho", "--private-headers", str(executable)]
+                ),
+                "rabin2_info": command_output(["rabin2", "-I", str(executable)]),
             }
 
     return result
