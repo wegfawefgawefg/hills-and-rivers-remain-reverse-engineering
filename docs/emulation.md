@@ -3,12 +3,13 @@
 ## Confirmed result
 
 The decrypted 2.0.0 ARMv7 executable boots in touchHLE on x86-64 Linux. With the
-compatibility patch in `emulation/patches/`, it reaches and remains at the English
-title screen, renders through OpenGL ES 1.1 at approximately 30 FPS, initializes
-audio, and accepts touchHLE's normal input path.
+compatibility patch in `emulation/patches/`, it reaches the English title screen
+and first playable tutorial map, renders through OpenGL ES 1.1 at approximately
+30 FPS, initializes audio, and accepts touchHLE's normal input path.
 
 This is already useful as a behavioral oracle. It is not yet a claim that every
-scenario or game system works correctly.
+scenario or game system works correctly. See
+[`runtime-observations.md`](runtime-observations.md) for tested navigation.
 
 Tested local baseline:
 

@@ -41,3 +41,7 @@ negative results so searches are reproducible and do not needlessly repeat.
   catalogue indexes 2 slices, 48 sections, 28 library references, 12,210 symbol
   records, 10 Objective-C classes, 216 methods, 88 fields, 152 object files, and
   2,342 non-executable bundle files.
+- Navigated the running original through Start Game, the tutorial choice, and
+  into the first playable tutorial map. Confirmed live map rendering, dialogue,
+  base selection, and the Move Troops, Relocate HQ, and Items command UI without
+  encountering another emulator compatibility failure.
