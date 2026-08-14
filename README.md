@@ -16,7 +16,8 @@ catalogue of binary structure, content formats, and observed behavior while the
 search for older, Lite, and encrypted builds continues.
 
 See [`docs/catalogue-plan.md`](docs/catalogue-plan.md) for the completeness
-criteria and [`docs/emulation.md`](docs/emulation.md) for the Linux baseline.
+criteria, [`docs/coverage-matrix.md`](docs/coverage-matrix.md) for the living RE
+queue, and [`docs/emulation.md`](docs/emulation.md) for the Linux baseline.
 
 ## Workspace
 

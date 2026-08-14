@@ -55,3 +55,8 @@ A component is complete only when we can connect:
 
 Unknown fields, unreachable branches, unused assets, and contradictory evidence
 remain explicit catalogue entries. They are not silently discarded.
+
+The domain-level status and next-work ordering live in
+[`coverage-matrix.md`](coverage-matrix.md). Work proceeds as a repeated
+bytes → consumer → interpretation → runtime-validation → test loop; surviving
+symbols alone never satisfy the definition of understood.

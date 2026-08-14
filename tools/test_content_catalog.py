@@ -9,7 +9,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from content_catalog import decode_strings, parse_map_pack
+from content_catalog import decode_strings, map_record_metadata, parse_map_pack
 
 
 class MapPackTests(unittest.TestCase):
@@ -53,6 +53,22 @@ class StringsTests(unittest.TestCase):
         values, encoding = decode_strings(raw, Path("Root.strings"))
         self.assertEqual(values, {"Title": "山河"})
         self.assertEqual(encoding, "UTF-8 OpenStep strings")
+
+
+class MapRecordTests(unittest.TestCase):
+    def test_extracts_fixed_metadata_and_dynamic_cursor(self) -> None:
+        record = bytearray(0x59C + 4 * 15 * 21 + 1)
+        record[0] = ord("1")
+        record[0x597] = 15
+        record[0x598] = 21
+        record[0x599] = 0xF8
+        metadata = map_record_metadata(bytes(record))
+        self.assertEqual(metadata["map_width"], 15)
+        self.assertEqual(metadata["map_height"], 21)
+        self.assertEqual(metadata["field_0x599_signed"], -8)
+        self.assertEqual(
+            metadata["post_cell_planes_cursor_candidate"], 0x59C + 4 * 15 * 21
+        )
 
 
 if __name__ == "__main__":

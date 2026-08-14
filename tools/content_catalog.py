@@ -89,6 +89,29 @@ def parse_map_pack(path: Path) -> tuple[int, list[tuple[int, bytes]]]:
     ]
 
 
+def map_record_metadata(record: bytes) -> dict[str, int | str]:
+    if len(record) <= 0x59A:
+        raise ValueError("map record is shorter than its fixed metadata prefix")
+    marker = record[0]
+    width = record[0x597]
+    height = record[0x598]
+    if marker != ord("1"):
+        raise ValueError(f"unsupported map record marker 0x{marker:02x}")
+    if width == 0 or height == 0:
+        raise ValueError("map record has a zero dimension")
+    dynamic_cursor = 0x59C + 4 * width * height
+    if dynamic_cursor >= len(record):
+        raise ValueError("map record dynamic cursor exceeds record boundary")
+    return {
+        "format_marker": chr(marker),
+        "map_width": width,
+        "map_height": height,
+        "field_0x599_signed": int.from_bytes(record[0x599:0x59A], signed=True),
+        "field_0x59a": record[0x59A],
+        "post_cell_planes_cursor_candidate": dynamic_cursor,
+    }
+
+
 def insert_map_packs(
     connection: sqlite3.Connection, build_id: str, app: Path
 ) -> None:
@@ -113,6 +136,8 @@ def insert_map_packs(
             {"version": version, "record_count": len(records)},
         )
         for index, (offset, record) in enumerate(records):
+            record_metadata = map_record_metadata(record)
+            record_metadata.update({"record_index": index, "pack_version": version})
             entry_id = content_id("map-record", relative, f"{index:03d}")
             add_entry(
                 connection,
@@ -125,7 +150,7 @@ def insert_map_packs(
                 f"{name} record {index}",
                 "unknown",
                 (1, 1, 0, 0),
-                {"record_index": index, "pack_version": version},
+                record_metadata,
             )
             connection.execute(
                 "INSERT INTO map_pack_records VALUES (?, ?, ?, ?, ?)",

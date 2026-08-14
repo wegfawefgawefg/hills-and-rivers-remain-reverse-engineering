@@ -31,3 +31,25 @@ field meanings.
 The ARMv6 pack consumer is `MapData::readPackData(int) const` at `0x6d6b8`; the
 ARMv7 counterpart is at `0x6beec`. Both lead to
 `FileManager::ReadBuffPackData(std::string const&, int, int)`.
+
+## Internal record prefix
+
+The first `LoadMapData` decompilation pass establishes these fixed fields in
+every record:
+
+| Record offset | Size | Interpretation | Confidence |
+| ---: | ---: | --- | --- |
+| `0x000` | 1 | ASCII format marker `1` | Confirmed by explicit rejection branch |
+| `0x597` | 1 | map width in cells | Confirmed by multiplication and runtime-like values |
+| `0x598` | 1 | map height in cells | Confirmed by multiplication and runtime-like values |
+| `0x599` | 1 | signed field stored in `MapData + 0x20` | Meaning unknown |
+| `0x59a` | 1 | boolean field stored in `MapData + 0x24` | Meaning unknown |
+
+All 78 records pass these invariants. Width and height range from 15 to 30 and
+include rectangular layouts such as 21×30, 24×18, and 27×30.
+
+The loader computes a later cursor equivalent to `0x59c + 4 * width * height`.
+This strongly suggests two 16-bit cell planes between the fixed prefix and the
+next variable section. That interpretation remains probable, not confirmed,
+until the preceding loops and their destination arrays are typed. The computed
+cursor is recorded per map entry so future decoding remains reproducible.

@@ -61,3 +61,7 @@ negative results so searches are reproducible and do not needlessly repeat.
 - Identified the named `Script` scenario interpreter as the next primary RE
   target. Its surviving methods cover branching, conditions, event triggers,
   base/map mutation, dialogue, effects, audio, flags, and endings.
+- Began the first matrix-driven RE loop at `MapData::LoadMapData`. Confirmed the
+  record marker and fixed width/height offsets for all 78 records; observed
+  dimensions from 15×15 through 30×30. Recorded the loader's probable
+  two-16-bit-plane cursor calculation without yet claiming plane semantics.
