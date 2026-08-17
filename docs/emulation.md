@@ -50,9 +50,19 @@ Then run:
 tools/run_touchhle.sh
 ```
 
-When no display is present, the wrapper uses Xvfb. On a desktop it opens a normal
-touchHLE window. The title screen may remain black briefly while startup and
-audio initialization complete.
+The wrapper defaults to touchHLE's 3× scale mode, producing a 960×1440 window
+for the original 320×480 device surface. Override it or use fullscreen with:
+
+```sh
+HRR_SCALE=2 tools/run_touchhle.sh
+HRR_SCALE=1 tools/run_touchhle.sh       # original device resolution
+HRR_FULLSCREEN=1 tools/run_touchhle.sh
+```
+
+Additional touchHLE options can be placed after an optional app-bundle path.
+When no display is present, the wrapper uses Xvfb. On a desktop it opens a
+normal touchHLE window. The title screen may remain black briefly while startup
+and audio initialization complete.
 
 ## Ghidra
 
