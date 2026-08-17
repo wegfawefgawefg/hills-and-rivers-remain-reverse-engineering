@@ -158,3 +158,206 @@ index 463880d..ec75d0a 100644
 +    export_c_func!(SCNetworkReachabilityScheduleWithRunLoop(_, _, _)),
 +    export_c_func!(SCNetworkReachabilityUnscheduleFromRunLoop(_, _, _)),
  ];
+diff --git a/OPTIONS_HELP.txt b/OPTIONS_HELP.txt
+index 9297a5f..72d5ffb 100644
+--- a/OPTIONS_HELP.txt
++++ b/OPTIONS_HELP.txt
+@@ -32,6 +32,19 @@ View options:
+ 
+         This is a natural number that is at least 1.
+ 
++    --window-scale=...
++        Set an integer window scale independently of the app's internal
++        resolution. If omitted, the scale-hack value is used. For example,
++        --window-scale=3 with no scale hack presents the original framebuffer
++        in a window three times larger in each dimension.
++
++        This is a natural number that is at least 1.
++
++    --nearest-neighbor
++        Present the app framebuffer with nearest-neighbor sampling rather than
++        linear filtering. Combine this with an integer window scale for crisp,
++        pixel-perfect output.
++
+ Device options:
+     --device-family=...
+         Specifies which device family should be emulated: iPhone or iPad.
+diff --git a/src/frameworks/opengles/eagl.rs b/src/frameworks/opengles/eagl.rs
+index 32a0b5c..d8b934a 100644
+--- a/src/frameworks/opengles/eagl.rs
++++ b/src/frameworks/opengles/eagl.rs
+@@ -601,12 +601,15 @@ unsafe fn present_renderbuffer(env: &mut Environment) {
+         0,
+     );
+     // The texture will not have any mip levels so we must ensure the filter
+-    // does not use them, else rendering will fail.
+-    gles.TexParameteri(
+-        gles11::TEXTURE_2D,
+-        gles11::TEXTURE_MIN_FILTER,
+-        gles11::LINEAR as _,
+-    );
++    // does not use them, else rendering will fail. Nearest-neighbor output is
++    // useful when an original-resolution framebuffer is integer-scaled.
++    let filter = if env.options.nearest_neighbor {
++        gles11::NEAREST
++    } else {
++        gles11::LINEAR
++    };
++    gles.TexParameteri(gles11::TEXTURE_2D, gles11::TEXTURE_MIN_FILTER, filter as _);
++    gles.TexParameteri(gles11::TEXTURE_2D, gles11::TEXTURE_MAG_FILTER, filter as _);
+ 
+     // Clean up the framebuffer object since we no longer need it.
+     // This also sets the framebuffer bindings back to zero, so rendering
+diff --git a/src/options.rs b/src/options.rs
+index 7f13c7f..0cd4ace 100644
+--- a/src/options.rs
++++ b/src/options.rs
+@@ -38,6 +38,8 @@ pub struct Options {
+     pub device_family: Option<DeviceFamily>,
+     pub initial_orientation: DeviceOrientation,
+     pub scale_hack: NonZeroU32,
++    pub window_scale: Option<NonZeroU32>,
++    pub nearest_neighbor: bool,
+     pub deadzone: f32,
+     pub analog_stick_tilt_controls: bool,
+     pub x_tilt_range: f32,
+@@ -71,6 +73,8 @@ impl Default for Options {
+             device_family: None,
+             initial_orientation: DeviceOrientation::Portrait,
+             scale_hack: NonZeroU32::new(1).unwrap(),
++            window_scale: None,
++            nearest_neighbor: false,
+             analog_stick_tilt_controls: true,
+             deadzone: 0.1,
+             x_tilt_range: 60.0,
+@@ -130,6 +134,14 @@ impl Options {
+             self.scale_hack = value
+                 .parse()
+                 .map_err(|_| "Invalid scale hack factor".to_string())?;
++        } else if let Some(value) = arg.strip_prefix("--window-scale=") {
++            self.window_scale = Some(
++                value
++                    .parse()
++                    .map_err(|_| "Invalid window scale factor".to_string())?,
++            );
++        } else if arg == "--nearest-neighbor" {
++            self.nearest_neighbor = true;
+         } else if arg == "--disable-analog-stick-tilt-controls" {
+             self.analog_stick_tilt_controls = false;
+         } else if let Some(value) = arg.strip_prefix("--deadzone=") {
+@@ -334,3 +346,27 @@ fn parse_dump_options(options: &str) -> Result<DumpingOptions, String> {
+     }
+     Ok(dumping_options)
+ }
++
++#[cfg(test)]
++mod tests {
++    use super::Options;
++
++    #[test]
++    fn parses_independent_window_scaling() {
++        let mut options = Options::default();
++        assert_eq!(options.window_scale, None);
++        assert!(!options.nearest_neighbor);
++
++        assert_eq!(options.parse_argument("--window-scale=3"), Ok(true));
++        assert_eq!(options.window_scale.unwrap().get(), 3);
++        assert_eq!(options.parse_argument("--nearest-neighbor"), Ok(true));
++        assert!(options.nearest_neighbor);
++        assert_eq!(options.scale_hack.get(), 1);
++    }
++
++    #[test]
++    fn rejects_zero_window_scale() {
++        let mut options = Options::default();
++        assert!(options.parse_argument("--window-scale=0").is_err());
++    }
++}
+diff --git a/src/window.rs b/src/window.rs
+index 4318984..32c41e7 100644
+--- a/src/window.rs
++++ b/src/window.rs
+@@ -228,7 +228,8 @@ pub struct Window {
+     /// Copy of `fullscreen` on [Options]. Note that this is meaningless when
+     /// [Self::rotatable_fullscreen] returns [true].
+     fullscreen: bool,
+-    scale_hack: NonZeroU32,
++    window_scale: NonZeroU32,
++    nearest_neighbor: bool,
+     internal_gl_ins: Option<Box<dyn GLESContext>>,
+     splash_image: Option<Image>,
+     device_family: DeviceFamily,
+@@ -292,6 +293,7 @@ impl Window {
+         video_ctx.enable_screen_saver();
+ 
+         let scale_hack = options.scale_hack;
++        let window_scale = options.window_scale.unwrap_or(scale_hack);
+         // TODO: some apps specify their orientation in Info.plist, we could use
+         // that here.
+         let device_family = options.device_family.unwrap_or(DeviceFamily::iPhone);
+@@ -321,7 +323,7 @@ impl Window {
+             window
+         } else {
+             let (width, height) =
+-                size_for_orientation(device_family, device_orientation, scale_hack);
++                size_for_orientation(device_family, device_orientation, window_scale);
+             let window = video_ctx
+                 .window(title, width, height)
+                 .position_centered()
+@@ -377,7 +379,8 @@ impl Window {
+             #[cfg(target_os = "macos")]
+             viewport_y_offset: 0,
+             fullscreen,
+-            scale_hack,
++            window_scale,
++            nearest_neighbor: options.nearest_neighbor,
+             internal_gl_ins: None,
+             splash_image: launch_image,
+             device_family,
+@@ -1236,16 +1239,13 @@ impl Window {
+                 gles11::UNSIGNED_BYTE,
+                 image.pixels().as_ptr() as *const _,
+             );
+-            gl_ctx.TexParameteri(
+-                gles11::TEXTURE_2D,
+-                gles11::TEXTURE_MIN_FILTER,
+-                gles11::LINEAR as _,
+-            );
+-            gl_ctx.TexParameteri(
+-                gles11::TEXTURE_2D,
+-                gles11::TEXTURE_MAG_FILTER,
+-                gles11::LINEAR as _,
+-            );
++            let filter = if self.nearest_neighbor {
++                gles11::NEAREST
++            } else {
++                gles11::LINEAR
++            };
++            gl_ctx.TexParameteri(gles11::TEXTURE_2D, gles11::TEXTURE_MIN_FILTER, filter as _);
++            gl_ctx.TexParameteri(gles11::TEXTURE_2D, gles11::TEXTURE_MAG_FILTER, filter as _);
+ 
+             present_frame(
+                 gl_ctx.as_mut(),
+@@ -1285,7 +1285,7 @@ impl Window {
+                 set_sdl2_orientation(new_orientation);
+                 rotate_fullscreen_size(new_orientation, self.window.size())
+             } else {
+-                size_for_orientation(self.device_family, new_orientation, self.scale_hack)
++                size_for_orientation(self.device_family, new_orientation, self.window_scale)
+             };
+ 
+             // macOS quirk: when resizing the window, the new framebuffer's size
+@@ -1360,8 +1360,11 @@ impl Window {
+     /// The aspect ratio of this region always reflects the guest app's view of
+     /// the world, but the scale and orientation might not.
+     pub fn viewport(&self) -> (u32, u32, u32, u32) {
+-        let (app_width, app_height) =
+-            size_for_orientation(self.device_family, self.device_orientation, self.scale_hack);
++        let (app_width, app_height) = size_for_orientation(
++            self.device_family,
++            self.device_orientation,
++            self.window_scale,
++        );
+         if !self.fullscreen && !Self::rotatable_fullscreen() {
+             return (0, 0, app_width, app_height);
+         }

@@ -12,17 +12,28 @@ if (($# > 0)) && [[ "$1" != --* ]]; then
     shift
 fi
 
-scale="${HRR_SCALE:-3}"
-if [[ ! "$scale" =~ ^[1-9][0-9]*$ ]]; then
-    echo "HRR_SCALE must be a positive integer: $scale" >&2
-    exit 1
-fi
+window_scale="${HRR_WINDOW_SCALE:-${HRR_SCALE:-3}}"
+render_scale="${HRR_RENDER_SCALE:-1}"
+for setting in "HRR_WINDOW_SCALE=$window_scale" "HRR_RENDER_SCALE=$render_scale"; do
+    value="${setting#*=}"
+    if [[ ! "$value" =~ ^[1-9][0-9]*$ ]]; then
+        echo "${setting%%=*} must be a positive integer: $value" >&2
+        exit 1
+    fi
+done
 
 touchhle_options=(
     --no-error-popup
     --print-fps
-    "--scale-hack=$scale"
+    "--scale-hack=$render_scale"
+    "--window-scale=$window_scale"
 )
+if [[ "${HRR_FILTER:-nearest}" == nearest ]]; then
+    touchhle_options+=(--nearest-neighbor)
+elif [[ "${HRR_FILTER:-nearest}" != linear ]]; then
+    echo "HRR_FILTER must be nearest or linear: ${HRR_FILTER}" >&2
+    exit 1
+fi
 if [[ "${HRR_FULLSCREEN:-0}" == 1 ]]; then
     touchhle_options+=(--fullscreen)
 fi

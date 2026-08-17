@@ -50,14 +50,26 @@ Then run:
 tools/run_touchhle.sh
 ```
 
-The wrapper defaults to touchHLE's 3× scale mode, producing a 960×1440 window
-for the original 320×480 device surface. Override it or use fullscreen with:
+The wrapper defaults to pixel-perfect 3× output: HRR still renders its original
+320×480 device framebuffer, touchHLE opens a 960×1440 host window, and the final
+presentation uses nearest-neighbor sampling. The game rotates both to landscape
+after launch. Override the window scale or use fullscreen with:
 
 ```sh
 HRR_SCALE=2 tools/run_touchhle.sh
 HRR_SCALE=1 tools/run_touchhle.sh       # original device resolution
 HRR_FULLSCREEN=1 tools/run_touchhle.sh
 ```
+
+Internal resolution and presentation filtering are independent. The previous
+high-resolution, linearly filtered mode remains available with:
+
+```sh
+HRR_RENDER_SCALE=3 HRR_SCALE=3 HRR_FILTER=linear tools/run_touchhle.sh
+```
+
+`HRR_WINDOW_SCALE` is the explicit spelling of `HRR_SCALE`. Valid filters are
+`nearest` and `linear`.
 
 Additional touchHLE options can be placed after an optional app-bundle path.
 When no display is present, the wrapper uses Xvfb. On a desktop it opens a
