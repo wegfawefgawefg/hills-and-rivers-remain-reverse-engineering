@@ -17,7 +17,9 @@ search for older, Lite, and encrypted builds continues.
 
 See [`docs/catalogue-plan.md`](docs/catalogue-plan.md) for the completeness
 criteria, [`docs/coverage-matrix.md`](docs/coverage-matrix.md) for the living RE
-queue, and [`docs/emulation.md`](docs/emulation.md) for the Linux baseline.
+queue, [`docs/emulation.md`](docs/emulation.md) for the Linux baseline, and
+[`docs/remaster-notes.md`](docs/remaster-notes.md) for redesign observations
+kept separate from preservation findings.
 
 ## Workspace
 
