@@ -15,6 +15,33 @@ from urllib.parse import quote
 
 
 MAP_PACK_NAMES = ("map.dat", "freemap.dat", "trial_map.dat", "tgs2009_map.dat")
+MAP_BASE_OFFSET = 0x1F
+MAP_BASE_COUNT = 100
+MAP_BASE_SIZE = 14
+MAP_WIDTH_OFFSET = 0x597
+MAP_HEIGHT_OFFSET = 0x598
+MAP_CELL_DATA_OFFSET = 0x59B
+MAP_TEXT_SLOT_COUNT = 256
+BASE_TYPE_NAMES = {
+    -1: "unused",
+    0: "route",
+    1: "castle",
+    2: "stable",
+    3: "port",
+    4: "cannon",
+    5: "fort",
+    6: "gold-mine-active",
+    7: "gold-mine-spent",
+}
+MAP_DIRECTIONS = ("up", "down", "left", "right")
+ITEM_NAMES = (
+    "Speed-up", "Battle", "Offense", "Defense", "Hold",
+    "Shield", "Teleporter", "Bomb", "Field HQ", "Draft",
+    "Speed-up A", "Battle A", "Offense A", "Defense A", "Hold A",
+    "Shield A", "Teleporter A", "Bomb A", "Field HQ A", "Draft A",
+    "Speed-up S", "Battle S", "Offense S", "Defense S", "Hold S",
+    "Shield S", "Teleporter S", "Bomb S", "Field HQ S", "Draft S",
+)
 LOADER_SYMBOLS = {
     "map-pack": "MapData::readPackData(int) const",
     "yas-file": "yas::Animation::open(char const*)",
@@ -89,26 +116,196 @@ def parse_map_pack(path: Path) -> tuple[int, list[tuple[int, bytes]]]:
     ]
 
 
-def map_record_metadata(record: bytes) -> dict[str, int | str]:
+def signed_byte(value: int) -> int:
+    return value - 0x100 if value & 0x80 else value
+
+
+def decode_map_text(data: bytes) -> str:
+    return data.decode("shift_jis")
+
+
+def parse_map_record(record: bytes) -> dict[str, object]:
     if len(record) <= 0x59A:
         raise ValueError("map record is shorter than its fixed metadata prefix")
     marker = record[0]
-    width = record[0x597]
-    height = record[0x598]
+    width = record[MAP_WIDTH_OFFSET]
+    height = record[MAP_HEIGHT_OFFSET]
     if marker != ord("1"):
         raise ValueError(f"unsupported map record marker 0x{marker:02x}")
     if width == 0 or height == 0:
         raise ValueError("map record has a zero dimension")
-    dynamic_cursor = 0x59C + 4 * width * height
-    if dynamic_cursor >= len(record):
-        raise ValueError("map record dynamic cursor exceeds record boundary")
+    bases = []
+    for index in range(MAP_BASE_COUNT):
+        offset = MAP_BASE_OFFSET + index * MAP_BASE_SIZE
+        raw = record[offset : offset + MAP_BASE_SIZE]
+        if len(raw) != MAP_BASE_SIZE:
+            raise ValueError("map record ends inside its base table")
+        packed_route = raw[7]
+        base_type = signed_byte(raw[0])
+        item_ids = [signed_byte(raw[i]) for i in (8, 10, 12)]
+        bases.append(
+            {
+                "index": index,
+                "offset": offset,
+                "raw": raw,
+                "type": base_type,
+                "type_name": BASE_TYPE_NAMES.get(base_type, "unknown"),
+                "owner": signed_byte(raw[1]),
+                "initial_soldiers": raw[2],
+                "neighbors": dict(
+                    zip(MAP_DIRECTIONS, (signed_byte(value) for value in raw[3:7]))
+                ),
+                "route_requirements": dict(
+                    zip(
+                        MAP_DIRECTIONS,
+                        ((packed_route >> shift) & 3 for shift in (6, 4, 2, 0)),
+                    )
+                ),
+                "item_ids": item_ids,
+                "item_names": [
+                    ITEM_NAMES[item_id] if 0 <= item_id < len(ITEM_NAMES) else None
+                    for item_id in item_ids
+                ],
+                "item_values": [raw[i] for i in (9, 11, 13)],
+            }
+        )
+
+    cell_count = width * height
+    planes = []
+    cursor = MAP_CELL_DATA_OFFSET
+    for index in range(2):
+        end = cursor + cell_count * 2
+        if end > len(record):
+            raise ValueError("map record ends inside its skipped cell planes")
+        planes.append({"index": index, "offset": cursor, "raw": record[cursor:end]})
+        cursor = end
+
+    if cursor >= len(record):
+        raise ValueError("map record has no label table")
+    label_count = record[cursor]
+    label_table_offset = cursor
+    cursor += 1
+    labels = []
+    for index in range(label_count):
+        if cursor >= len(record):
+            raise ValueError("map record ends before a label length")
+        size = record[cursor]
+        offset = cursor
+        cursor += 1
+        end = cursor + size
+        if end > len(record):
+            raise ValueError("map record ends inside a label")
+        raw = record[cursor:end]
+        labels.append(
+            {"index": index, "offset": offset, "raw": raw, "text": decode_map_text(raw)}
+        )
+        cursor = end
+
+    text_table_offset = cursor
+    text_slots = []
+    for index in range(MAP_TEXT_SLOT_COUNT):
+        if cursor + 2 > len(record):
+            raise ValueError("map record ends before a text-slot length")
+        size = int.from_bytes(record[cursor : cursor + 2], "big")
+        offset = cursor
+        cursor += 2
+        end = cursor + size
+        if end > len(record):
+            raise ValueError("map record ends inside a text slot")
+        raw = record[cursor:end]
+        text_slots.append(
+            {"index": index, "offset": offset, "raw": raw, "text": decode_map_text(raw)}
+        )
+        cursor = end
+
+    event_table_offset = cursor
+    if cursor >= len(record):
+        raise ValueError("map record has no event table")
+    event_count = record[cursor]
+    cursor += 1
+    events = []
+    for event_index in range(event_count):
+        event_offset = cursor
+        if cursor + 32 > len(record):
+            raise ValueError("map record ends inside an event header")
+        header = record[cursor : cursor + 30]
+        command_count = int.from_bytes(record[cursor + 30 : cursor + 32], "big")
+        cursor += 32
+        commands = []
+        for command_index in range(command_count):
+            command_offset = cursor
+            if cursor + 2 > len(record):
+                raise ValueError("map record ends before a command header")
+            opcode = record[cursor]
+            payload_size = record[cursor + 1]
+            cursor += 2
+            end = cursor + payload_size
+            if end > len(record):
+                raise ValueError("map record ends inside a command payload")
+            payload = record[cursor:end]
+            commands.append(
+                {
+                    "index": command_index,
+                    "offset": command_offset,
+                    "opcode": opcode,
+                    "payload": payload,
+                    "raw": record[command_offset:end],
+                }
+            )
+            cursor = end
+        events.append(
+            {
+                "index": event_index,
+                "offset": event_offset,
+                "header": header,
+                "commands": commands,
+                "raw": record[event_offset:cursor],
+            }
+        )
+
+    if cursor != len(record):
+        raise ValueError(
+            f"map record has {len(record) - cursor} unconsumed trailing bytes"
+        )
+
     return {
         "format_marker": chr(marker),
         "map_width": width,
         "map_height": height,
         "field_0x599_signed": int.from_bytes(record[0x599:0x59A], signed=True),
         "field_0x59a": record[0x59A],
-        "post_cell_planes_cursor_candidate": dynamic_cursor,
+        "bases": bases,
+        "cell_planes": planes,
+        "label_table_offset": label_table_offset,
+        "labels": labels,
+        "text_table_offset": text_table_offset,
+        "text_slots": text_slots,
+        "event_table_offset": event_table_offset,
+        "events": events,
+        "end_offset": cursor,
+    }
+
+
+def map_record_metadata(record: bytes) -> dict[str, int | str]:
+    parsed = parse_map_record(record)
+    bases = parsed["bases"]
+    text_slots = parsed["text_slots"]
+    events = parsed["events"]
+    return {
+        "format_marker": parsed["format_marker"],
+        "map_width": parsed["map_width"],
+        "map_height": parsed["map_height"],
+        "field_0x599_signed": parsed["field_0x599_signed"],
+        "field_0x59a": parsed["field_0x59a"],
+        "active_base_count": sum(base["type"] != -1 for base in bases),
+        "label_count": len(parsed["labels"]),
+        "nonempty_text_slot_count": sum(bool(slot["raw"]) for slot in text_slots),
+        "event_count": len(events),
+        "command_count": sum(len(event["commands"]) for event in events),
+        "label_table_offset": parsed["label_table_offset"],
+        "text_table_offset": parsed["text_table_offset"],
+        "event_table_offset": parsed["event_table_offset"],
+        "end_offset": parsed["end_offset"],
     }
 
 
@@ -136,6 +333,7 @@ def insert_map_packs(
             {"version": version, "record_count": len(records)},
         )
         for index, (offset, record) in enumerate(records):
+            parsed = parse_map_record(record)
             record_metadata = map_record_metadata(record)
             record_metadata.update({"record_index": index, "pack_version": version})
             entry_id = content_id("map-record", relative, f"{index:03d}")
@@ -160,6 +358,165 @@ def insert_map_packs(
                 "INSERT INTO content_relationships VALUES (?, ?, ?, ?, ?)",
                 (build_id, pack_id, "contains", entry_id, "indexed offset table"),
             )
+
+            for base in parsed["bases"]:
+                if base["type"] == -1:
+                    continue
+                base_id = content_id(
+                    "map-base", relative, f"{index:03d}", f"{base['index']:03d}"
+                )
+                add_entry(
+                    connection,
+                    build_id,
+                    base_id,
+                    "map-base",
+                    relative,
+                    offset + base["offset"],
+                    base["raw"],
+                    f"{name} record {index} base {base['index']}",
+                    "confirmed",
+                    (1, 1, 1, 0),
+                    {
+                        key: value
+                        for key, value in base.items()
+                        if key not in ("raw", "offset")
+                    },
+                )
+                connection.execute(
+                    "INSERT INTO content_relationships VALUES (?, ?, ?, ?, ?)",
+                    (build_id, entry_id, "contains-base", base_id,
+                     "MapData::LoadMapData 14-byte BASE_DATA source record"),
+                )
+
+            for plane in parsed["cell_planes"]:
+                plane_id = content_id(
+                    "map-cell-plane", relative, f"{index:03d}", str(plane["index"])
+                )
+                add_entry(
+                    connection,
+                    build_id,
+                    plane_id,
+                    "map-cell-plane",
+                    relative,
+                    offset + plane["offset"],
+                    plane["raw"],
+                    f"{name} record {index} skipped cell plane {plane['index']}",
+                    "confirmed",
+                    (1, 1, 0, 0),
+                    {
+                        "plane_index": plane["index"],
+                        "cell_count": parsed["map_width"] * parsed["map_height"],
+                        "bytes_per_cell": 2,
+                        "loader_behavior": "cursor advance only",
+                    },
+                )
+                connection.execute(
+                    "INSERT INTO content_relationships VALUES (?, ?, ?, ?, ?)",
+                    (build_id, entry_id, "contains-cell-plane", plane_id,
+                     "fixed two bytes per map cell"),
+                )
+
+            for label in parsed["labels"]:
+                label_id = content_id(
+                    "map-label", relative, f"{index:03d}", f"{label['index']:03d}"
+                )
+                add_entry(
+                    connection,
+                    build_id,
+                    label_id,
+                    "map-label",
+                    relative,
+                    offset + label["offset"] + 1,
+                    label["raw"],
+                    f"{name} record {index} label {label['index']}",
+                    "confirmed",
+                    (1, 1, 1, 0),
+                    {"slot": label["index"], "text": label["text"]},
+                )
+                connection.execute(
+                    "INSERT INTO content_relationships VALUES (?, ?, ?, ?, ?)",
+                    (build_id, entry_id, "contains-label", label_id,
+                     "one-byte-length Shift-JIS table"),
+                )
+
+            for slot in parsed["text_slots"]:
+                if not slot["raw"]:
+                    continue
+                text_id = content_id(
+                    "map-text", relative, f"{index:03d}", f"{slot['index']:03d}"
+                )
+                add_entry(
+                    connection,
+                    build_id,
+                    text_id,
+                    "map-text",
+                    relative,
+                    offset + slot["offset"] + 2,
+                    slot["raw"],
+                    f"{name} record {index} text {slot['index']}",
+                    "confirmed",
+                    (1, 1, 1, 0),
+                    {"slot": slot["index"], "text": slot["text"]},
+                )
+                connection.execute(
+                    "INSERT INTO content_relationships VALUES (?, ?, ?, ?, ?)",
+                    (build_id, entry_id, "contains-text", text_id,
+                     "256-slot big-endian-length Shift-JIS table"),
+                )
+
+            for event in parsed["events"]:
+                event_id = content_id(
+                    "map-event", relative, f"{index:03d}", f"{event['index']:03d}"
+                )
+                add_entry(
+                    connection,
+                    build_id,
+                    event_id,
+                    "map-event",
+                    relative,
+                    offset + event["offset"],
+                    event["raw"],
+                    f"{name} record {index} event {event['index']}",
+                    "confirmed",
+                    (1, 1, 0, 0),
+                    {
+                        "event_index": event["index"],
+                        "header_hex": event["header"].hex(),
+                        "command_count": len(event["commands"]),
+                    },
+                )
+                connection.execute(
+                    "INSERT INTO content_relationships VALUES (?, ?, ?, ?, ?)",
+                    (build_id, entry_id, "contains-event", event_id,
+                     "Script::LoadMapEvent event table"),
+                )
+                for command in event["commands"]:
+                    command_id = content_id(
+                        "map-command", relative, f"{index:03d}",
+                        f"{event['index']:03d}", f"{command['index']:03d}"
+                    )
+                    add_entry(
+                        connection,
+                        build_id,
+                        command_id,
+                        "map-command",
+                        relative,
+                        offset + command["offset"],
+                        command["raw"],
+                        (f"{name} record {index} event {event['index']} "
+                         f"command {command['index']}"),
+                        "confirmed",
+                        (1, 1, 0, 0),
+                        {
+                            "opcode": command["opcode"],
+                            "payload_hex": command["payload"].hex(),
+                        },
+                    )
+                    connection.execute(
+                        "INSERT INTO content_relationships VALUES (?, ?, ?, ?, ?)",
+                        (build_id, event_id, "contains-command", command_id,
+                         "opcode, one-byte payload size, payload"),
+                    )
             hashes[digest(record)].append(entry_id)
 
     for identical_ids in hashes.values():

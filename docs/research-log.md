@@ -65,3 +65,23 @@ negative results so searches are reproducible and do not needlessly repeat.
   record marker and fixed width/height offsets for all 78 records; observed
   dimensions from 15×15 through 30×30. Recorded the loader's probable
   two-16-bit-plane cursor calculation without yet claiming plane semantics.
+
+## 2026-08-17 — Map and gameplay-core reconstruction
+
+- Reconstructed every cursor advance in `MapData::LoadMapData` and
+  `Script::LoadMapEvent`; the strict parser consumes every byte of all 78 map
+  records with no remainder.
+- Extracted 2,628 active route/base nodes, 156 legacy cell planes, 720 Shift-JIS
+  labels, 4,212 nonempty embedded text slots, 659 events, and 17,119 commands.
+- Recovered the complete 14-byte authored base record, graph directions, port
+  gates, all base types, item IDs, and paired item parameters.
+- Recovered the `BASE_DATA` and `ARMY_DATA` runtime layouts and the core troop
+  dispatch, backward BFS, edge timing, progress, chaining, and arrival paths.
+- Recovered owned-base production, castle combat and stable speed bonuses,
+  three-turn gold-mine behavior, five-turn fort construction, soldier caps,
+  and the three exact 12-general parameter maps.
+- Recovered combat pulse trial counts, alliance-weighted scores, timed-item
+  modifiers, casualty probability/allocation, elimination, and capture paths.
+- Added a reproducible JSON map exporter and rebuilt the local catalogue to
+  32,984 functional/content entries and 38,127 typed relationships for build
+  `hrr-2.0.0`.

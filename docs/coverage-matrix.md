@@ -22,7 +22,7 @@ Status vocabulary:
 | Mach-O packaging | ARMv6/ARMv7 slices, hashes, sections, load commands, linked libraries, and `cryptid = 0` | Does not imply function semantics |
 | Mechanical symbol index | 12,210 per-slice symbol records, Objective-C metadata, imports, and 152 object-file names | Names and addresses only |
 | File-level resource inventory | Every non-executable bundle file has path, extension, size, and SHA-256 | Assets are not all semantically classified |
-| Map-pack outer container | Big-endian version/count/offset table and 78 exact record ranges/hashes | Internal map records remain undecoded |
+| Map-pack and record structure | Four indexed containers, 78 exact records, and byte-complete parsing into bases, cell planes, labels, text, events, and commands | Event/command semantics remain separate |
 | Localization extraction | Both shipped encodings, all 282 tables and 6,894 locale/table/key/value records | Runtime lookup/fallback behavior is separate |
 | Original Linux bootstrap | Reproducible touchHLE patch boots the ARMv7 original into a playable tutorial | Full-game compatibility is not proven |
 
@@ -31,14 +31,14 @@ Status vocabulary:
 | Domain | Status | What we know | Required next evidence |
 | --- | --- | --- | --- |
 | Other IPA versions/Lite build | Partial | 1.1.0 and Lite leads exist; only 2.0.0 bytes survive locally | Acquire, hash, and compare additional binaries |
-| Map-record header | Partial | Marker and fixed width/height offsets are proven for all 78 records | Type the remaining fixed prefix and variable-section cursor |
-| Terrain/tile grid | Not started | Map PVRs and map-related classes survive | Identify dimensions, cell encoding, and renderer lookup |
-| Roads and graph topology | Not started | Runtime roads and pathfinding symbols survive | Decode node/edge records and validate paths |
-| Bases and headquarters | Partial | Runtime behavior and named getters/mutators survive | Decode base records, types, ownership, production, and HQ rules |
-| Player/general definitions | Partial | `General` and parameter symbols plus localized names survive | Recover record layout, statistics, and scenario assignment |
-| Scenario event records | Partial | `LoadMapEvent` and named event checks survive | Locate event region and decode trigger records |
+| Map regulation fields | Partial | Full section boundaries, dimensions, two flags, and every trailing structure are proven | Type bytes `0x001..0x01e` and flags at `0x599..0x59a` |
+| Terrain/tile grid | Partial | Two exact 2-byte-per-cell planes are catalogued; this loader only skips them | Determine historical purpose and live renderer/texture layout |
+| Roads and graph topology | Partial | All 2,628 active nodes, directional edges, port gates, coordinates, and BFS are decoded | Differentially validate representative/tied paths |
+| Bases and headquarters | Partial | All base records/types/owners/garrisons plus production and timed fort/mine rules are decoded | HQ relocation and all capture/battle edge cases |
+| Player/general definitions | Partial | Localized IDs and exact item/escape/active tables for 12 generals | Remaining statistics, AI meaning, and scenario assignment |
+| Scenario event records | Partial | All 659 event boundaries and 30-byte headers are extracted | Type every trigger/header field |
 | Scenario command language | Partial | Rich named `Script::*` interpreter survives | Recover dispatch grammar, commands, operands, and control flow |
-| Scenario-to-text linkage | Partial | Dialogue tables and likely key vocabulary are decoded | Prove how event operands select table/key entries |
+| Scenario-to-text linkage | Partial | 720 labels and 4,212 embedded Shift-JIS text slots are decoded | Prove command operands select slots and locale overrides |
 | `stage.dat` | Not started | 420-byte standalone DAT file | Locate its consumer and derive record layout |
 | YAS animation body | Partial | Magic, version, header words, texture names, and loader are known | Decompile `yas::Animation::open`; decode frames and timing |
 | PNG assets | Partial | All files and hashes are known | Record dimensions, roles, atlases, consumers, and duplicates |
@@ -57,16 +57,16 @@ Status vocabulary:
 | Renderer | Partial | OpenGL ES imports and named graphics/texture classes | Coordinate systems, batching, blend modes, layers, and effects |
 | Input and gestures | Partial | Touch reaches tutorial; movement/HQ UI observed | Exact tap/hold/drag/pinch state machine and thresholds |
 | Camera/map scrolling | Partial | Runtime scrolling and named script/camera functions | Bounds, interpolation, zoom, and scripted movement |
-| Core game-state layout | Not started | Many getters/mutators retain names | Recover types, arrays, invariants, and ownership |
+| Core game-state layout | Partial | `BASE_DATA` (`0xb4`), `ARMY_DATA` (`0x38`), arrays and primary fields recovered | Finish `STATE_DATA`, transient battle/item/UI state |
 | Turn sequencing | Partial | Tutorial description and `turnEnd` symbol | Exact phase order, timers, production, events, and cleanup |
-| Soldier production/economy | Partial | HQ production observed; calculation symbols survive | Formulas, caps, modifiers, and timing |
-| Troop movement | Partial | Command UI works; movement/path symbols survive | Dispatch rules, speed, merging, cancellation, and arrival |
-| Pathfinding | Not started | `GetBasePath`, `GetArmyPath`, `IsPassable` | Graph algorithm, weights, restrictions, and tie-breaking |
-| Combat and damage | Not started | `DamageCalculate` and `BattleFunc` | Complete formula, state transitions, timing, and edge cases |
-| Base capture/control | Partial | Ownership mutations and flags are visible | Capture thresholds, contested states, and special-base behavior |
+| Soldier production/economy | Partial | Exact owned-node/castle/stable table, turn formula, mine multiplier, and caps | Item/script modifiers and runtime differential tests |
+| Troop movement | Partial | Packet layout, dispatch, edge timing, progress preservation, arrival, and chaining recovered | Merging/cancellation edge cases and differential tests |
+| Pathfinding | Partial | Backward unweighted BFS, ownership/union blocking, port gates, and tie order recovered | Differential tests across shipped graph edge cases |
+| Combat and damage | Partial | Exact trial count, alliance-weighted scores, item multipliers, kill probability, casualty allocation, and elimination branches recovered | Pulse scheduling, sally edge cases, and differential tests |
+| Base capture/control | Partial | Attacker/owner contest fields, elimination, ownership transfer, minimum garrisons, drop/capture events recovered | Sally edge cases, all scripted consequences, and differential tests |
 | Headquarters relocation | Partial | UI and `SetNewHead` are known | Preconditions, costs, timing, and AI use |
-| Items and effects | Partial | Text/assets and named item/effect functions survive | Every item parameter, duration, target rule, and stacking rule |
-| Special terrain/structures | Partial | Gold mine, fort, bombard, lava, cannon symbols survive | Decode parameters and all turn/battle effects |
+| Items and effects | Partial | All 30 IDs/grades, durations, caps, targeting, combat modifiers, bomb fractions, draft amounts, Field HQ turns, and authored drop slots recovered | Teleport edge cases and runtime tests |
+| Special terrain/structures | Partial | Stable/port gates plus exact five-turn fort and three-turn gold-mine state changes | Cannon, bridge, bombard, lava, and hidden-base rules |
 | AI | Not started | Numerous semantically named AI functions survive | Decision order, scoring, difficulty parameters, and tie-breaking |
 | Victory/defeat | Partial | Script endings and win-info symbols survive | All conditions, precedence, results, rewards, and transitions |
 | Story/free/tutorial progression | Partial | Modes, maps, text, and first tutorial are accessible | Unlock graph, scenario ordering, completion flags, and endings |

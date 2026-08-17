@@ -57,9 +57,20 @@ python3 tools/build_catalog.py \
   --build-id example
 ```
 
-The builder strictly decodes indexed map packs, localization tables, and YAS
-animation headers. See [`docs/functional-catalogue.md`](docs/functional-catalogue.md)
+The builder strictly decodes complete map-record structure, localization
+tables, and YAS animation headers. See
+[`docs/functional-catalogue.md`](docs/functional-catalogue.md),
+[`docs/gameplay-core.md`](docs/gameplay-core.md),
 and [`docs/formats/`](docs/formats/) for current coverage and format evidence.
+
+Export all 78 maps—including graph layouts, item slots, embedded text, events,
+and raw opcode payloads—to inspectable JSON with:
+
+```bash
+python3 tools/export_maps.py \
+  'workspace/extracted/example/Payload/Game.app' \
+  workspace/catalog/example-maps.json
+```
 
 ## Scope and handling
 

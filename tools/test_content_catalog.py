@@ -9,7 +9,12 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from content_catalog import decode_strings, map_record_metadata, parse_map_pack
+from content_catalog import (
+    decode_strings,
+    map_record_metadata,
+    parse_map_pack,
+    parse_map_record,
+)
 
 
 class MapPackTests(unittest.TestCase):
@@ -57,7 +62,8 @@ class StringsTests(unittest.TestCase):
 
 class MapRecordTests(unittest.TestCase):
     def test_extracts_fixed_metadata_and_dynamic_cursor(self) -> None:
-        record = bytearray(0x59C + 4 * 15 * 21 + 1)
+        event_offset = 0x59C + 4 * 15 * 21 + 256 * 2
+        record = bytearray(event_offset + 1)
         record[0] = ord("1")
         record[0x597] = 15
         record[0x598] = 21
@@ -66,8 +72,44 @@ class MapRecordTests(unittest.TestCase):
         self.assertEqual(metadata["map_width"], 15)
         self.assertEqual(metadata["map_height"], 21)
         self.assertEqual(metadata["field_0x599_signed"], -8)
+        self.assertEqual(metadata["label_table_offset"], 0x59B + 4 * 15 * 21)
+        self.assertEqual(metadata["event_table_offset"], event_offset)
+        self.assertEqual(metadata["end_offset"], len(record))
+
+    def test_decodes_base_text_and_event_sections(self) -> None:
+        width = height = 1
+        record = bytearray(0x59B + 4 * width * height)
+        record[0] = ord("1")
+        record[0x597] = width
+        record[0x598] = height
+        record[0x1F:0x2D] = bytes(
+            [2, 1, 10, 0xFF, 2, 3, 4, 0b01101100, 5, 30, 6, 20, 7, 10]
+        )
+        label = "アラン".encode("shift_jis")
+        text = "進め".encode("shift_jis")
+        record += bytes([1, len(label)]) + label
+        record += len(text).to_bytes(2, "big") + text
+        record += bytes(2 * 255)
+        event_header = bytes(range(30))
+        command = bytes([7, 3, 0xAA, 0xBB, 0xCC])
+        record += bytes([1]) + event_header + bytes([0, 1]) + command
+
+        parsed = parse_map_record(bytes(record))
+        base = parsed["bases"][0]
+        self.assertEqual(base["type"], 2)
+        self.assertEqual(base["owner"], 1)
         self.assertEqual(
-            metadata["post_cell_planes_cursor_candidate"], 0x59C + 4 * 15 * 21
+            base["neighbors"], {"up": -1, "down": 2, "left": 3, "right": 4}
+        )
+        self.assertEqual(
+            base["route_requirements"],
+            {"up": 1, "down": 2, "left": 3, "right": 0},
+        )
+        self.assertEqual(parsed["labels"][0]["text"], "アラン")
+        self.assertEqual(parsed["text_slots"][0]["text"], "進め")
+        self.assertEqual(parsed["events"][0]["commands"][0]["opcode"], 7)
+        self.assertEqual(
+            parsed["events"][0]["commands"][0]["payload"], b"\xaa\xbb\xcc"
         )
 
 
