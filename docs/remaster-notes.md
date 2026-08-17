@@ -63,9 +63,10 @@ cause. A remaster could keep the nations, relationships, Claude/Dean parallel,
 and desolate ending while drastically condensing or rewriting scene dialogue.
 
 The optional scenarios provide some useful backstory—Claude's earlier revolt,
-Viola deciding to fight, Dean in exile, and Zelgius recruiting his servants—but
-also contain disposable comedy. `FreeTxt35`, for example, builds an extended
-exchange around Damon asking Saki whether it is her “time of the month.” Such
-material should be preserved in the historical transcript, not treated as
-writing that a remaster needs to reproduce unchanged.
-
+Viola deciding to fight, Dean in exile, and Zelgius recruiting his servants—and
+broad character comedy centered on Damon, Saki, and Zelgius. `FreeTxt35`, for
+example, builds an extended exchange around Damon asking Saki whether it is her
+“time of the month,” provoking her into attacking him. The historical
+transcript should preserve this exactly. Whether a remaster retains, rewrites,
+or expands that tone is a creative and target-audience decision, not a
+preservation judgment.
