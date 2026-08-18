@@ -82,6 +82,10 @@ negative results so searches are reproducible and do not needlessly repeat.
   and the three exact 12-general parameter maps.
 - Recovered combat pulse trial counts, alliance-weighted scores, timed-item
   modifiers, casualty probability/allocation, elimination, and capture paths.
+- Corrected movement documentation from a fresh `SetArmySpeed` audit: each
+  stable contributes 100 through `GetUpParam`; the separate 200 increase is the
+  timed Speed-up item. Confirmed combat pulses occur at attack-animation
+  completion and simultaneous elimination resolves for the defender.
 - Added a reproducible JSON map exporter and rebuilt the local catalogue to
   32,984 functional/content entries and 38,127 typed relationships for build
   `hrr-2.0.0`.

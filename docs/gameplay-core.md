@@ -84,11 +84,13 @@ The source direction's in-flight bit is cleared as the packet leaves that edge.
 
 `SetArmySpeed` (`0x2275c`) measures the Euclidean distance between direction-
 specific endpoints at the source and destination. Let `d` be the integer
-distance and `speed` be `GetUpParam(faction, 2)`:
+distance. The speed parameter is `GetUpParam(faction, 2)`, plus 200 while the
+faction's timed Speed-up item state is active:
 
 ```text
 base_ticks = floor((400*d + 31200) / 192)
-if the faction owns at least one Stable: speed += 200
+speed = 100 + 100 * owned_stables
+if Speed-up is active: speed += 200
 duration = max(3, floor(base_ticks * 100 / speed))
 transition = max(1, floor(duration * 39 / (d + 78)))
 ```
@@ -179,13 +181,19 @@ survives, the routine restores one soldier; this preserves the participant
 until the side itself is eliminated.
 
 If the attackers reach zero, contest state is cleared and a defender/neutral
-garrison is clamped to at least one. If the defenders reach zero, the attacker
-becomes the owner, receives any eligible one-time item drop, capture events run,
-and the new owner's garrison is clamped to at least one. The same routine has a
-special branch for a packet that sallies from a base and later folds that packet
-back into the ownership/capture result. The broad capture state machine is now
-recovered; exact pulse scheduling and every sally edge case still need runtime
-differential tests.
+garrison is clamped to at least one. This check runs before defender elimination,
+so simultaneous elimination is explicitly a defender win. If only the defenders
+reach zero, the attacker becomes the owner, receives any eligible one-time item
+drop, capture events run, and the new owner's garrison is clamped to at least
+one. The same routine has a special branch for a packet that sallies from a base
+and later folds that packet back into the ownership/capture result.
+
+`BattleFunc` calls `DamageCalculate` whenever the base's three-part attack YAS
+animation reports completion, then recreates and replays the animation if both
+sides remain. Thus the combat pulse cadence is animation-driven rather than a
+fixed combat timer in `DamageCalculate`. The mathematical state transition is
+recovered; the exact YAS frame duration and every sally edge case still need
+runtime differential tests.
 
 ## Timed special bases
 
@@ -206,7 +214,7 @@ localized variants. `Scene::Game::UseItem` is at `0x229b0`.
 
 | Effect | IDs | Recovered behavior by grade 0 / A / S |
 | --- | --- | --- |
-| Speed-up | 0/10/20 | faction effect timer +600 / +900 / +1200 update ticks, capped at 1800; all moving packets are immediately retimed |
+| Speed-up | 0/10/20 | faction effect timer +600 / +900 / +1200 update ticks, capped at 1800; adds 200 to the movement speed parameter and immediately retimes all moving packets |
 | Battle | 1/11/21 | faction effect timer +600 / +900 / +1200, capped at 1800 |
 | Offense | 2/12/22 | faction effect timer +600 / +900 / +1200, capped at 1800 |
 | Defense | 3/13/23 | faction effect timer +600 / +900 / +1200, capped at 1800 |
