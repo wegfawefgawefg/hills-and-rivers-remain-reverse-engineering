@@ -86,6 +86,36 @@ It calls `ArmyArrival` after progress exceeds duration. Arrival either:
 
 The source direction's in-flight bit is cleared as the packet leaves that edge.
 
+## In-transit traffic and reinforcements
+
+Moving packets do not test their positions against other moving packets.
+Opposing armies on the same line pass through one another without fighting;
+friendly or allied packets likewise do not merge in transit. Combat and merging
+occur only when a packet reaches a base node.
+
+Each base direction stores a bit per faction at `BASE_DATA + 0x54..0x60` to
+track that faction's in-flight use of the directed edge. The multi-hop arrival
+path will not launch another packet of the same faction along an already marked
+outgoing edge: it terminates that packet's route and deposits its soldiers at
+the intermediate base instead. Opposite directions use different source-edge
+fields, so this is traffic bookkeeping rather than a road collision system.
+
+`ArmyArrival` (`0x2d8ac`) handles a contested destination as follows:
+
+- a packet belonging to the owner or its ally is immediately added to that
+  faction's resident bucket, reinforcing the defending side;
+- a packet belonging to the current attacker or its ally is immediately added
+  to its faction bucket, reinforcing the attacking side;
+- a faction hostile to both existing sides is held at the arrival boundary
+  until the current battle resolves; and
+- at an uncontested hostile base, `SetBattle` (`0x2c168`) transfers the arriving
+  packet into the attacker bucket and starts the attack animation immediately.
+
+Arrival processing runs before completed attack animations trigger the next
+damage pulse in `BattleFunc`. Therefore reinforcements that arrive in time are
+included in that next pulse; there is no separate reinforcement delay or
+mid-line interception battle.
+
 ## Edge duration
 
 `SetArmySpeed` (`0x2275c`) measures the Euclidean distance between direction-

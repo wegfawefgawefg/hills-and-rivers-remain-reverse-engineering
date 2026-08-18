@@ -90,6 +90,10 @@ negative results so searches are reproducible and do not needlessly repeat.
   10–29, and 30+ soldiers; horses are the Stable speed concept, not a cavalry
   class. Defined the internal sally transition and recovered cannon target
   selection, turn scheduling, random bombardment, and nonlethal garrison floor.
+- Recovered in-transit and contested-arrival rules: packets never collide or
+  merge on roads; opposing traffic passes through, same-faction directed-edge
+  occupancy can stop multi-hop chaining, existing battle sides receive
+  reinforcements immediately, and a hostile third side waits at the boundary.
 - Added a reproducible JSON map exporter and rebuilt the local catalogue to
   32,984 functional/content entries and 38,127 typed relationships for build
   `hrr-2.0.0`.

@@ -60,7 +60,7 @@ Status vocabulary:
 | Core game-state layout | Partial | `BASE_DATA` (`0xb4`), `ARMY_DATA` (`0x38`), arrays and primary fields recovered | Finish `STATE_DATA`, transient battle/item/UI state |
 | Turn sequencing | Partial | Tutorial description and `turnEnd` symbol | Exact phase order, timers, production, events, and cleanup |
 | Soldier production/economy | Partial | Exact owned-node/castle/stable table, turn formula, mine multiplier, and caps | Item/script modifiers and runtime differential tests |
-| Troop movement | Partial | Packet layout, dispatch, edge timing, progress preservation, arrival, and chaining recovered | Merging/cancellation edge cases and differential tests |
+| Troop movement | Partial | Packet layout, dispatch, edge timing, pass-through traffic, directed-edge occupancy, arrival reinforcement, third-side waiting, and chaining recovered | Cancellation edge cases and differential tests |
 | Pathfinding | Partial | Backward unweighted BFS, ownership/union blocking, port gates, and tie order recovered | Differential tests across shipped graph edge cases |
 | Combat and damage | Partial | Exact trial count, alliance-weighted scores, item multipliers, kill probability, casualty allocation, defender-wins-ties elimination, and animation-driven pulses recovered | Exact attack-YAS frame duration, sally edge cases, and differential tests |
 | Base capture/control | Partial | Attacker/owner contest fields, elimination, ownership transfer, minimum garrisons, drop/capture events recovered | Sally edge cases, all scripted consequences, and differential tests |
