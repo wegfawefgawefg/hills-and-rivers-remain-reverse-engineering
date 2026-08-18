@@ -66,7 +66,7 @@ Status vocabulary:
 | Base capture/control | Partial | Attacker/owner contest fields, elimination, ownership transfer, minimum garrisons, drop/capture events recovered | Sally edge cases, all scripted consequences, and differential tests |
 | Headquarters relocation | Partial | UI and `SetNewHead` are known | Preconditions, costs, timing, and AI use |
 | Items and effects | Partial | All 30 IDs/grades, durations, caps, targeting, combat modifiers, bomb fractions, draft amounts, Field HQ turns, and authored drop slots recovered | Teleport edge cases and runtime tests |
-| Special terrain/structures | Partial | Stable/port gates plus exact five-turn fort and three-turn gold-mine state changes | Cannon, bridge, bombard, lava, and hidden-base rules |
+| Special terrain/structures | Partial | Stable/port gates, five-turn fort, three-turn mine, plus cannon targeting, timing, and nonlethal floor | Exact bombard loss arithmetic, bridge, lava, and hidden-base rules |
 | AI | Not started | Numerous semantically named AI functions survive | Decision order, scoring, difficulty parameters, and tie-breaking |
 | Victory/defeat | Partial | Script endings and win-info symbols survive | All conditions, precedence, results, rewards, and transitions |
 | Story/free/tutorial progression | Partial | Modes, maps, text, and first tutorial are accessible | Unlock graph, scenario ordering, completion flags, and endings |

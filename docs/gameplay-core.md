@@ -48,6 +48,12 @@ a moving troop packet, not a different soldier class:
 
 This explains the apparent lack of conventional unit types: gameplay troops
 are integer-sized packets modified by faction/general, base, and item state.
+`GetScale` (`0xf12c`) selects only three presentation sizes from the packet's
+soldier count: small for 0–9, medium for 10–29, and large for 30 or more. The
+corresponding `heisi_s`, `heisi_m`, and `heisi_l` assets are visual variants,
+not soldier classes. Capturing the base translated as Stable (Japanese `馬`,
+literally “horse”) changes the faction-wide speed parameter; it does not turn
+packets into a separately stored cavalry unit.
 
 ## Graph movement and routing
 
@@ -195,6 +201,13 @@ fixed combat timer in `DamageCalculate`. The mathematical state transition is
 recovered; the exact YAS frame duration and every sally edge case still need
 runtime differential tests.
 
+“Sally” here is the original symbol name in `IsSallyBase`; it is not a special
+unit or player command. It covers the brief overlap in which a dispatched army
+packet is still associated with its source/base state while battle or cannon
+damage is being reconciled. The edge cases concern avoiding duplicated or lost
+soldiers if that packet is damaged or its base changes hands during the
+transition.
+
 ## Timed special bases
 
 - An occupied fort (type 5) advances its counter at each turn end and becomes a
@@ -205,6 +218,23 @@ runtime differential tests.
   (`turnEndGoldMine`, `0x1c5a4`).
 - Capturing or losing a stable immediately recalculates every relevant moving
   packet's duration while preserving its progress ratio.
+
+## Cannons and reinforcements
+
+A cannon is authored base type 4, not a movable unit. The shipped help text says
+an occupied cannon fires on enemy-occupied bases within two matrix squares in a
+cardinal direction and never fires on neutral bases. `GetBombardTarget`
+(`0x10d54`) constructs the eligible list and randomly selects a target;
+`turnEndBombard` (`0x1dd3c`) schedules the shot, and `BombardFunc` (`0x1cabc`)
+applies probabilistic losses but clamps the target garrison to at least one.
+Consequently cannon fire weakens bases but cannot capture one by itself.
+
+“Reinforcement” has two meanings, neither of them a unit class. Normal army
+packets can arrive while a base is already contested and join their faction or
+allied side. Scenarios can also inject additional generic soldiers after a turn
+condition—the localized Free Mode text explicitly announces such timed
+reinforcements. The remaining work is exact cannon casualty arithmetic and
+typing each scenario command that creates scripted reinforcements.
 
 ## Items and grades
 

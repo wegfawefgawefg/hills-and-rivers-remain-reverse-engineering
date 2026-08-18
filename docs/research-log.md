@@ -86,6 +86,10 @@ negative results so searches are reproducible and do not needlessly repeat.
   stable contributes 100 through `GetUpParam`; the separate 200 increase is the
   timed Speed-up item. Confirmed combat pulses occur at attack-animation
   completion and simultaneous elimination resolves for the defender.
+- Confirmed `GetScale` chooses small/medium/large army visuals solely at 0–9,
+  10–29, and 30+ soldiers; horses are the Stable speed concept, not a cavalry
+  class. Defined the internal sally transition and recovered cannon target
+  selection, turn scheduling, random bombardment, and nonlethal garrison floor.
 - Added a reproducible JSON map exporter and rebuilt the local catalogue to
   32,984 functional/content entries and 38,127 typed relationships for build
   `hrr-2.0.0`.
