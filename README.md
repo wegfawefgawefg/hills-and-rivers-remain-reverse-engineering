@@ -105,3 +105,13 @@ documentation. Do not commit or redistribute copyrighted game binaries or
 assets. Record public source URLs and cryptographic hashes instead. Keep any
 clean-room reimplementation separate from extracted code and assets as the
 project matures.
+
+*Hills and Rivers Remain*, its software, artwork, audio, story, and trademarks
+belong to their respective rights holders. This independent research project is
+not affiliated with or endorsed by Square Enix. It contains no game binary or
+asset and requires users to supply their own lawfully obtained copy.
+
+Project-authored scripts and documentation are available under the MIT License.
+The touchHLE compatibility patch modifies MPL-2.0-covered source and remains
+under MPL-2.0; see [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) and
+[`LICENSES/MPL-2.0.txt`](LICENSES/MPL-2.0.txt).

@@ -38,10 +38,10 @@ must be marked as claims until confirmed by `Info.plist` or executable evidence.
 - ARMv6 encryption: `LC_ENCRYPTION_INFO`, `cryptid 0`
 - ARMv7 encryption: `LC_ENCRYPTION_INFO`, `cryptid 0`
 - Assessment: already decrypted/plaintext and directly suitable for static RE
-- Packaging note: `iTunesMetadata.plist` identifies scene account
-  `drmVersionNumber = 0`, App Store item `334825813`,
-  and eleven historical external version identifiers. The executable is reported
-  as unstripped and retains extensive local C++ symbol and object-file metadata.
+- Packaging note: `iTunesMetadata.plist` identifies a scene-account package,
+  `drmVersionNumber = 0`, App Store item `334825813`, and eleven historical
+  external version identifiers. The executable is reported as unstripped and
+  retains extensive local C++ symbol and object-file metadata.
 
 The three Archive.org items above expose the same 105,046,051-byte file with the
 same MD5 and SHA-1. They are multiple provenance records, not distinct variants.
